@@ -1,0 +1,88 @@
+version: "3"
+
+name: upload
+
+volumes:
+  db:
+  caddy_data:
+  caddy_config:
+  minio_data_1:
+  minio_data_2:
+
+networks:
+  proxy_net:
+  minio_net:
+  db_net:
+
+services:
+  db:
+    image: postgres:16.1-alpine
+    hostname: db
+    environment:
+      - POSTGRES_USER=upload
+      - POSTGRES_PASSWORD=upload
+      - POSTGRES_DB=upload
+    ports:
+      - 5432:5432
+    volumes:
+      - db:/var/lib/postgresql/data
+    networks:
+      - db_net
+
+  minio:
+    image: quay.io/minio/minio:RELEASE.2023-11-11T08-14-41Z
+    hostname: minio
+    command: server --console-address ":9001" http://minio/data{1...2}
+    expose:
+      - "9000"
+      - "9001"
+    environment:
+      - MINIO_ROOT_USER=minioadmin
+      - MINIO_ROOT_PASSWORD=minioadmin
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    volumes:
+      - minio_data_1:/data1
+      - minio_data_2:/data2
+    networks:
+      - minio_net
+
+  next:
+    image: upload/next:dev
+    hostname: next
+    build:
+      context: ../../
+      dockerfile: Dockerfile
+      target: installer
+    command: pnpm dev
+    volumes:
+      - ../../:/app
+    networks:
+      - proxy_net
+      - db_net
+      - minio_net
+    depends_on:
+      - db
+      - minio
+
+  caddy:
+    image: caddy:2.7.5-alpine
+    hostname: caddy
+    ports:
+      - 80:80
+      - 443:443
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    environment:
+      - CNAME=$CNAME
+    networks:
+      - proxy_net
+      - minio_net
+    depends_on:
+      - next
+      - minio

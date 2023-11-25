@@ -1,0 +1,15 @@
+upload.{$CNAME} {
+  redir https://www.upload.{$CNAME}{uri}
+}
+
+www.upload.{$CNAME} {
+  reverse_proxy next:3000
+}
+
+minio.upload.{$CNAME} {
+  reverse_proxy minio:9000
+}
+
+console.upload.{$CNAME} {
+  reverse_proxy minio:9001
+}
