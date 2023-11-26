@@ -1,7 +1,7 @@
 'use client';
 
+import FileImage from '@/components/FileImage';
 import useImageUpload from '@/hooks/useImageUpload';
-import Image from 'next/image';
 
 export default function Page() {
   const { file, setFile, isUploading, handleUpload } = useImageUpload({
@@ -46,9 +46,8 @@ export default function Page() {
                   &times;
                 </button>
               </div>
-              <Image
-                src={URL.createObjectURL(file)}
-                alt={file.name}
+              <FileImage
+                file={file}
                 className="object-cover"
                 loading="lazy"
                 fill
