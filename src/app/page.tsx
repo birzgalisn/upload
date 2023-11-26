@@ -1,72 +1,62 @@
 'use client';
 
-import { useState } from 'react';
+import useImageUpload from '@/hooks/useImageUpload';
+import Image from 'next/image';
 
 export default function Page() {
-  const [file, setFile] = useState<File | null>(null);
-  const [uploading, setUploading] = useState<boolean>(false);
+  const { file, setFile, isUploading, handleUpload } = useImageUpload({
+    onSuccess: () => alert('Upload successful'),
+    onError: () => alert('Upload failed'),
+  });
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-
-    if (!file) {
-      alert('Please select a file to upload.');
-      return;
-    }
-
-    setUploading(true);
-
-    const response = await fetch(
-      process.env.NEXT_PUBLIC_BASE_URL + '/api/upload',
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ filename: file.name, contentType: file.type }),
-      },
-    );
-
-    if (response.ok) {
-      const { url, fields } = await response.json();
-
-      const formData = new FormData();
-      Object.entries(fields).forEach(([key, value]) => {
-        formData.append(key, value as string);
-      });
-      formData.append('file', file);
-
-      const uploadResponse = await fetch(url, {
-        method: 'POST',
-        body: formData,
-      });
-
-      if (uploadResponse.ok) {
-        alert('Upload successful!');
-      } else {
-        console.error('S3 Upload Error:', uploadResponse);
-        alert('Upload failed.');
-      }
-    } else {
-      alert('Failed to get pre-signed URL.');
-    }
-
-    setUploading(false);
+    await handleUpload();
   };
+
+  const handleReset = (_e: React.FormEvent<HTMLFormElement>) => {
+    setFile(null);
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    setFile(files?.item(0) || null);
+  };
+
+  const isUploadDisabled = !file || isUploading;
 
   return (
     <main>
       <h1>Upload a File to S3</h1>
-      <form onSubmit={handleSubmit}>
+      <form onSubmit={handleSubmit} onReset={handleReset}>
         <input
           type="file"
-          onChange={(e) => {
-            const files = e.target.files;
-            if (files) {
-              setFile(files.item(0));
-            }
-          }}
+          onChange={handleFileChange}
           accept="image/png,image/jpeg"
         />
-        <button type="submit" disabled={uploading}>
+        {!!file && (
+          <div>
+            <h2>Preview</h2>
+            <div className="relative h-56 w-56">
+              <div className="absolute right-0 top-0 z-10 m-2">
+                <button
+                  className="flex h-6 w-6 items-center justify-center bg-white"
+                  type="reset"
+                >
+                  &times;
+                </button>
+              </div>
+              <Image
+                src={URL.createObjectURL(file)}
+                alt={file.name}
+                className="object-cover"
+                loading="lazy"
+                fill
+              />
+            </div>
+          </div>
+        )}
+        <button type="submit" disabled={isUploadDisabled}>
           Upload
         </button>
       </form>

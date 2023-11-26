@@ -8,7 +8,7 @@ const EXPIRES_IN_SECONDS = 5;
 
 export async function POST(request: NextRequest) {
   try {
-    const { filename, contentType } = await request.json();
+    const { fileName, contentType } = await request.json();
 
     const s3Client = new S3Client({
       endpoint: process.env.AWS_ENDPOINT!,
@@ -50,10 +50,7 @@ async function generatePresignedPost(
       ['content-length-range', 0, MAX_UPLOAD_SIZE_MB * 1024 * 1024],
       ['starts-with', '$Content-Type', contentType],
     ],
-    Fields: {
-      acl: 'public-read',
-      'Content-Type': contentType,
-    },
+    Fields: { 'Content-Type': contentType },
     Expires: EXPIRES_IN_SECONDS,
   });
 
